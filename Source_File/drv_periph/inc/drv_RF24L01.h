@@ -227,7 +227,7 @@ uint8_t NRF24L01_TxPacket( uint8_t *txbuf, uint8_t Length );
 uint8_t NRF24L01_RxPacket( uint8_t *rxbuf );
 void NRF24L01_Gpio_Init( void );
 void RF24L01_Init( void );	
-
+void NRF24L01_SendToUart_RxPacket(void);
 
 #endif
 

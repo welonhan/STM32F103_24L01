@@ -600,6 +600,31 @@ uint8_t NRF24L01_RxPacket( uint8_t *rxbuf )
 }
 
  /**
+  * @brief :NRF24L01 中断处理
+  * @param :无
+  * @note  :无
+  * @retval:无
+  */
+void NRF24L01_SendToUart_RxPacket(void)
+{
+	
+	uint8_t irq_Status = 0, RxLength = 0;
+	uint8_t rxbuf[32];
+	
+	irq_Status=RF24L01_Read_IRQ_Status(  );
+	if(irq_Status &( 1 << RX_DR ))			//收到数据
+	{
+		NRF24L01_Write_Reg( STATUS,irq_Status );				//清中断标志
+		RxLength = NRF24L01_Read_Reg( R_RX_PL_WID );		//读取接收到的数据个数
+		NRF24L01_Read_Buf( RD_RX_PLOAD,(uint8_t *)&rxbuf,RxLength );	//接收到数据 
+		NRF24L01_Write_Reg( FLUSH_RX,0xff );						//清除RX FIFO
+		drv_uart_tx_bytes( (uint8_t *)&rxbuf,RxLength);		//输出接收到的字节
+	}
+  	
+}
+
+
+ /**
   * @brief :RF24L01引脚初始化
   * @param :无
   * @note  :无
@@ -631,6 +656,7 @@ void NRF24L01_Gpio_Init( void )
 	RF24L01_SET_CS_HIGH( );		//??SPI??
 }
 
+
  /**
   * @brief :RF24L01模块初始化
   * @param :无
@@ -645,9 +671,9 @@ void RF24L01_Init( void )
     NRF24L01_Clear_IRQ_Flag( IRQ_ALL );
 #if DYNAMIC_PACKET == 1
 
-    NRF24L01_Write_Reg( DYNPD, ( 1 << 0 ) ); 	//使能通道1动态数据长度
-    NRF24L01_Write_Reg( FEATRUE, 0x07 );
-    NRF24L01_Read_Reg( DYNPD );
+    NRF24L01_Write_Reg( DYNPD, ( 1 << 0 ) ); 	//使能通道1动态数据长度，自动ACK必须使能动态数据长度
+    NRF24L01_Write_Reg( FEATRUE, 0x07 );			//使能动态数据长度，使能ACK, 使能NO_ACK命令
+    NRF24L01_Read_Reg( DYNPD );					
     NRF24L01_Read_Reg( FEATRUE );
 	
 #elif DYNAMIC_PACKET == 0
@@ -656,16 +682,18 @@ void RF24L01_Init( void )
 	
 #endif	//DYNAMIC_PACKET
 
-    NRF24L01_Write_Reg( CONFIG, /*( 1<<MASK_RX_DR ) |*/		//接收中断
+    NRF24L01_Write_Reg( CONFIG, /*( 1<<MASK_RX_DR ) |*/					//接收中断
                                       ( 1 << EN_CRC ) |     //使能CRC 1个字节
+																			( 1 << PRIM_RX ) | 		//设置为PRX
                                       ( 1 << PWR_UP ) );    //开启设备
-    NRF24L01_Write_Reg( EN_AA, ( 1 << ENAA_P0 ) );   		//通道0自动应答
-    NRF24L01_Write_Reg( EN_RXADDR, ( 1 << ERX_P0 ) );		//通道0接收
-    NRF24L01_Write_Reg( SETUP_AW, AW_5BYTES );     			//地址宽度 5个字节
-    NRF24L01_Write_Reg( SETUP_RETR, ARD_1000US |
-                        ( REPEAT_CNT & 0x0F ) );         	//重复等待时间 250us
-    NRF24L01_Write_Reg( RF_CH, 60 );             			//初始化通道
-    NRF24L01_Write_Reg( RF_SETUP, 0x26 );							//250kbps 0dbm
+		
+    NRF24L01_Write_Reg( EN_AA, ( 1 << ENAA_P0 ) );   				//通道0自动应答
+    NRF24L01_Write_Reg( EN_RXADDR, ( 1 << ERX_P0 ) );				//通道0接收
+    NRF24L01_Write_Reg( SETUP_AW, AW_5BYTES );     					//地址宽度 5个字节
+    NRF24L01_Write_Reg( SETUP_RETR, ARD_500US |
+                        ( REPEAT_CNT & 0x0F ) );         	//重复等待时间 500us, 重复传输15次
+    NRF24L01_Write_Reg( RF_CH, 60 );             					//初始化通道
+    NRF24L01_Write_Reg( RF_SETUP, 0x26 );									//250kbps 0dbm
 
     NRF24L01_Set_TxAddr( &addr[0], 5 );                      //设置TX地址
     NRF24L01_Set_RxAddr( 0, &addr[0], 5 );                   //设置RX地址
