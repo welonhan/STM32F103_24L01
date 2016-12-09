@@ -328,7 +328,7 @@ void NRF24L01_Write_Tx_Payload_InAck( uint8_t *pData, uint8_t len )
     uint8_t btmp;
 	
 	len = ( len > 32 ) ? 32 : len;		//数据长度大于32个则只写32个字节
-
+		NRF24L01_Flush_Tx_Fifo();
     RF24L01_SET_CS_LOW( );			//片选
     drv_spi_read_write_byte( W_ACK_PLOAD );		//命令
     for( btmp = 0; btmp < len; btmp ++ )

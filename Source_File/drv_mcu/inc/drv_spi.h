@@ -40,7 +40,7 @@
 
 #define SPI_NSS_GPIO_PORT			GPIOB
 #define SPI_NSS_GPIO_CLK			RCC_APB2Periph_GPIOB
-#define SPI_NSS_GPIO_PIN			GPIO_Pin_12
+#define SPI_NSS_GPIO_PIN			GPIO_Pin_5
 
 
 #define spi_set_nss_high( )			SPI_NSS_GPIO_PORT->ODR |= SPI_NSS_GPIO_PIN								//片选置高

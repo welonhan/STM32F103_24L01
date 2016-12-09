@@ -17,13 +17,29 @@
 
 #include "main.h"				//main.h 中含有TX/RX、软件SPI/硬件SPI选择配置选项
 
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+EXTI_InitTypeDef   EXTI_InitStructure;
+GPIO_InitTypeDef   GPIO_InitStructure;
+NVIC_InitTypeDef   NVIC_InitStructure;
+
+
+TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+TIM_OCInitTypeDef  TIM_OCInitStructure;
+TIM_TypeDef* TIMx;
+
+/* Private function prototypes -----------------------------------------------*/
+void EXTI0_Config(void);
+void EXTI10_Config(void);
 
 const char *g_Ashining = "ashining";
 uint8_t g_TxMode = 0, g_UartRxFlag = 0;
 uint8_t g_UartRxBuffer[ 100 ] = { 0 };
 uint8_t g_RF24L01RxBuffer[ 32 ] = { 0 }; 
 
-
+uint8_t pData[8]={88,00,99,99,00,00,66,55};
 
 /**
   * @brief :主函数 
@@ -51,13 +67,18 @@ int main( void )
 	NRF24L01_Gpio_Init( );
 	
 	//检测nRF24L01
-	NRF24L01_check( );			
+	NRF24L01_check( );	
 	
-	led_red_off( );
-	for( i = 0; i < 6; i++ )
+	EXTI0_Config();					//按键中断
+	EXTI10_Config();				//24L01 中断
+	
+	PWM_Config();
+	
+	while(1)
 	{
-		led_red_flashing( );
+		//led_red_flashing( );
 		drv_delay_500Ms( 1 );
+		NRF24L01_Write_Tx_Payload_InAck( (uint8_t *)pData, 8 );
 	}
 		
 	
@@ -146,5 +167,79 @@ int main( void )
 	
 #endif
 	
+}
+
+/**
+  * @brief  Configure PA.00 in interrupt mode
+  * @param  None
+  * @retval None
+  */
+void EXTI0_Config(void)
+{
+  /* Enable GPIOA clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+  
+  /* Configure PA.00 pin as input floating */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  /* Enable AFIO clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+
+  /* Connect EXTI0 Line to PA.00 pin */
+  GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource0);
+
+  /* Configure EXTI0 line */
+  EXTI_InitStructure.EXTI_Line = EXTI_Line0;
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;  
+  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&EXTI_InitStructure);
+
+  /* Enable and set EXTI0 Interrupt to the lowest priority */
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+}
+
+/**
+  * @brief  Configure PB.10 24L01 IRQ in interrupt mode
+  * @param  None
+  * @retval None
+  */
+void EXTI10_Config(void)
+{
+
+  /* Enable GPIOB clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+
+  /* Configure PB.10 pin as input floating */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+  /* Enable AFIO clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+  /* Connect EXTI9 Line to PB.09 pin */
+  GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource10);
+
+  /* Configure EXTI10 line */
+  EXTI_InitStructure.EXTI_Line = EXTI_Line10;
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&EXTI_InitStructure);
+
+  /* Enable and set EXTI10 Interrupt to the lowest priority */
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+  NVIC_Init(&NVIC_InitStructure);
+
 }
 

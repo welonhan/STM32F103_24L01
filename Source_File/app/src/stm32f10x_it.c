@@ -166,23 +166,13 @@ void EXTI0_IRQHandler(void)
 }
 
 /**
-  * @brief  This function handles External lines 9 to 5 interrupt request.
+  * @brief  This function handles External lines 15 to 10 interrupt request.
   * @param  None
   * @retval None
   */
-void EXTI9_5_IRQHandler(void)
+void EXTI15_10_IRQHandler(void)
 {
-#if defined (STM32F10X_HD_VL) || defined (STM32F10X_HD) || defined (STM32F10X_XL)
-  if(EXTI_GetITStatus(EXTI_Line8) != RESET)
-  {
-    /* Toggle LED2 */
-     STM_EVAL_LEDToggle(LED2);
-
-    /* Clear the  EXTI line 8 pending bit */
-    EXTI_ClearITPendingBit(EXTI_Line8);
-  }
-#else
-  if(EXTI_GetITStatus(EXTI_Line9) != RESET)			//PB10 NRF24L01 ÖÐ¶Ï
+  if(EXTI_GetITStatus(EXTI_Line10) != RESET)			//PB10 NRF24L01 ÖÐ¶Ï
   {
     /* Toggle LED2 */
     drv_led_flashing(LED_RED);
@@ -193,7 +183,7 @@ void EXTI9_5_IRQHandler(void)
 		
 		
   }
-#endif
+
 }
 
 /******************************************************************************/
