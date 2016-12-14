@@ -37,7 +37,7 @@
 #define RF24L01_IRQ_GPIO_CLK			RCC_APB2Periph_GPIOB
 #define RF24L01_IRQ_GPIO_PIN			GPIO_Pin_10
 
-#define RF24L01_CS_GPIO_PORT			SPI_NSS_GPIO_PORT			//PG7
+#define RF24L01_CS_GPIO_PORT			SPI_NSS_GPIO_PORT			
 #define RF24L01_CS_GPIO_CLK				SPI_NSS_GPIO_CLK
 #define RF24L01_CS_GPIO_PIN				SPI_NSS_GPIO_PIN
 
@@ -86,7 +86,7 @@ typedef enum PowerType
 #define REUSE_TX_PL     0xE3	//重新使用上一包数据，CE为高，数据包被不断发送
 #define R_RX_PL_WID     0x60
 #define NOP             0xFF	//空操作，可以用来读状态寄存器
-#define W_ACK_PLOAD		0xA8
+#define W_ACK_PLOAD			0xA8
 #define WR_TX_PLOAD_NACK 0xB0
 //SPI(NRF24L01)寄存器地址
 #define CONFIG          0x00	//配置寄存器地址，bit0:1接收模式,0发射模式;bit1:电选择;bit2:CRC模式;bit3:CRC使能;

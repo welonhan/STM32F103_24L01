@@ -39,7 +39,7 @@ uint8_t g_TxMode = 0, g_UartRxFlag = 0;
 uint8_t g_UartRxBuffer[ 100 ] = { 0 };
 uint8_t g_RF24L01RxBuffer[ 32 ] = { 0 }; 
 
-uint8_t pData[8]={88,00,99,99,00,00,66,55};
+uint8_t NRF24L01_ACK[8]={88,00,99,99,00,00,66,55};
 
 /**
   * @brief :主函数 
@@ -68,7 +68,7 @@ int main( void )
 	
 	//检测nRF24L01
 	NRF24L01_check( );	
-	
+	RF24L01_Init();
 	EXTI0_Config();					//按键中断
 	EXTI10_Config();				//24L01 中断
 	
@@ -76,9 +76,7 @@ int main( void )
 	
 	while(1)
 	{
-		//led_red_flashing( );
-		drv_delay_500Ms( 1 );
-		NRF24L01_Write_Tx_Payload_InAck( (uint8_t *)pData, 8 );
+				
 	}
 		
 	
@@ -219,6 +217,7 @@ void EXTI10_Config(void)
   /* Configure PB.10 pin as input floating */
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   /* Enable AFIO clock */

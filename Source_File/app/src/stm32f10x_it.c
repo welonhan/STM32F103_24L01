@@ -32,6 +32,7 @@
   * @{
   */
 
+
 /** @addtogroup EXTI_Config
   * @{
   */ 
@@ -174,14 +175,12 @@ void EXTI15_10_IRQHandler(void)
 {
   if(EXTI_GetITStatus(EXTI_Line10) != RESET)			//PB10 NRF24L01 ÖÐ¶Ï
   {
-    /* Toggle LED2 */
+    /* Clear the  EXTI line 10 pending bit */
+    EXTI_ClearITPendingBit(EXTI_Line10);
+		
+		/* Toggle LED2 */
     drv_led_flashing(LED_RED);
 		NRF24L01_SendToUart_RxPacket();
-
-    /* Clear the  EXTI line 9 pending bit */
-    EXTI_ClearITPendingBit(EXTI_Line9);
-		
-		
   }
 
 }
