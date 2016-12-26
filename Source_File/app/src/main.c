@@ -1,45 +1,49 @@
 /**
   ******************************************************************************
-  * @author  泽耀科技 ASHINING
-  * @version V3.0
-  * @date    2016-10-08
+  * @author  Hanwl
+  * @version V1.0
+  * @date    2016-12-19
   * @brief   主函数C文件
-  ******************************************************************************
-  * @attention
-  *
-  * 官网	:	http://www.ashining.com
-  * 淘宝	:	https://shop105912646.taobao.com
-  * 阿里巴巴:	https://cdzeyao.1688.com
   ******************************************************************************
   */
 
+#include "main.h"						
 
 
-#include "main.h"				//main.h 中含有TX/RX、软件SPI/硬件SPI选择配置选项
+#define ADC1_DR_Address    ((uint32_t)0x4001244C)
+
+/* Private function prototypes -----------------------------------------------*/
+void EXTI0_Config(void);
+void NRF24L01_IRQ_Config(void);
+void RC_ADC_Init(void);
+void RC_BAT_DataHandle(void);
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-EXTI_InitTypeDef   EXTI_InitStructure;
-GPIO_InitTypeDef   GPIO_InitStructure;
-NVIC_InitTypeDef   NVIC_InitStructure;
 
 
-TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-TIM_OCInitTypeDef  TIM_OCInitStructure;
-TIM_TypeDef* TIMx;
+ADC_InitTypeDef 				ADC_InitStructure;
+DMA_InitTypeDef 				DMA_InitStructure;
+__IO uint16_t 					ADCConvertedValue;
 
-/* Private function prototypes -----------------------------------------------*/
-void EXTI0_Config(void);
-void EXTI10_Config(void);
+TIM_TimeBaseInitTypeDef  	TIM_TimeBaseStructure;
+TIM_OCInitTypeDef  				TIM_OCInitStructure;
+TIM_TypeDef* 							TIMx;
 
-const char *g_Ashining = "ashining";
-uint8_t g_TxMode = 0, g_UartRxFlag = 0;
-uint8_t g_UartRxBuffer[ 100 ] = { 0 };
-uint8_t g_RF24L01RxBuffer[ 32 ] = { 0 }; 
 
+#ifndef DEBUG_MODE
+uint8_t NRF24L01_ACK[2]={0};
+uint8_t NRF24L01_RX[4]={0};
+#else
 uint8_t NRF24L01_ACK[8]={88,00,99,99,00,00,66,55};
+uint8_t NRF24L01_RX[32]={0};
+#endif
+
+uint8_t NRF24L01_ACK_NUM=sizeof(NRF24L01_ACK);
+uint8_t NRF24L01_RX_NUM=sizeof(NRF24L01_RX);
+
 
 /**
   * @brief :主函数 
@@ -49,8 +53,6 @@ uint8_t NRF24L01_ACK[8]={88,00,99,99,00,00,66,55};
   */ 
 int main( void )
 {	
-	uint8_t i = 0;
-
 	//串口初始化
 	drv_uart_init( 9600 );
 	
@@ -69,101 +71,24 @@ int main( void )
 	//检测nRF24L01
 	NRF24L01_check( );	
 	RF24L01_Init();
-	EXTI0_Config();					//按键中断
-	EXTI10_Config();				//24L01 中断
 	
+	//按键中断
+	EXTI0_Config();	
+
+	//24L01 中断
+	NRF24L01_IRQ_Config();				
+	
+	//BAT voltage ADC init
+	RC_ADC_Init();
+	
+	//4 channel PWM init
 	PWM_Config();
 	
 	while(1)
 	{
-				
+		drv_delay_ms( 50 );
+		RC_BAT_DataHandle();
 	}
-		
-	
-#ifdef	__RF24L01_TX_TEST__		
-//=========================================================================================//	
-//*****************************************************************************************//
-//************************************* 发送 **********************************************//
-//*****************************************************************************************//
-//=========================================================================================//	
-	
-	//按键初始化
-	drv_button_init( );
-	
-	RF24L01_Set_Mode( MODE_TX );		//发送模式
-	while( 1 )	
-	{
-		//模式切换
-		if( BUTOTN_PRESS_DOWN == drv_button_check( ))
-		{
-			g_TxMode = 1 - g_TxMode;		//模式会在 TX_MODE_1( 0 ),TX_MODE_2( 1 )之间切换
-			
-			//状态显示清零
-			//led_green_off( );
-			led_red_off( );
-			
-			if( TX_MODE_1 == g_TxMode )
-			{
-				for( i = 0; i < 6; i++ )		
-				{
-					led_red_flashing( );	//固定发送模式，红灯闪烁3次
-					drv_delay_500Ms( 1 );		
-				}
-			}
-			else
-			{
-				for( i = 0; i < 6; i++ )
-				{
-					//led_green_flashing( );	//串口发送模式，绿灯闪烁3次
-					drv_delay_500Ms( 1 );
-				}
-			}
-		}
-		
-		//发送
-		if( TX_MODE_1 == g_TxMode )
-		{
-			NRF24L01_TxPacket( (uint8_t *)g_Ashining, 8 );		//模式1发送固定字符,1S一包
-			drv_delay_500Ms( 1 );	
-			drv_delay_500Ms( 1 );	
-			led_red_flashing( );			
-		}
-		else
-		{	
-			//查询串口数据
-			i = drv_uart_rx_bytes( g_UartRxBuffer );
-			
-			if( 0 != i )
-			{
-				NRF24L01_TxPacket( g_UartRxBuffer, i );
-				led_red_flashing( );
-			}
-		}
-	}
-	
-#else		
-//=========================================================================================//	
-//*****************************************************************************************//
-//************************************* 接收 **********************************************//
-//*****************************************************************************************//
-//=========================================================================================//	
-	
-	RF24L01_Set_Mode( MODE_RX );		//接收模式
-	while( 1 )
-	{
-		NRF24L01_RxPacket( g_RF24L01RxBuffer );		//接收字节
-		i = NRF24L01_Read_Reg( R_RX_PL_WID );			//接收字节个数
-		if( 0 != i )
-		{
-			led_red_flashing( );
-			drv_uart_tx_bytes( g_RF24L01RxBuffer,i);	//输出接收到的字节
-			
-		}
-	}
-		
-
-	
-#endif
 	
 }
 
@@ -174,6 +99,10 @@ int main( void )
   */
 void EXTI0_Config(void)
 {
+	GPIO_InitTypeDef   			GPIO_InitStructure;
+	EXTI_InitTypeDef   			EXTI_InitStructure;
+	NVIC_InitTypeDef   			NVIC_InitStructure;
+	
   /* Enable GPIOA clock */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
   
@@ -208,9 +137,12 @@ void EXTI0_Config(void)
   * @param  None
   * @retval None
   */
-void EXTI10_Config(void)
+void NRF24L01_IRQ_Config(void)
 {
-
+	GPIO_InitTypeDef   			GPIO_InitStructure;
+	EXTI_InitTypeDef   			EXTI_InitStructure;
+	NVIC_InitTypeDef   			NVIC_InitStructure;
+	
   /* Enable GPIOB clock */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 
@@ -241,4 +173,96 @@ void EXTI10_Config(void)
   NVIC_Init(&NVIC_InitStructure);
 
 }
+
+/**
+  * @brief  Configure PA.1 as analog input to monitor battery voltage
+  * @param  None
+  * @retval None
+  */
+void RC_ADC_Init(void)
+{
+	GPIO_InitTypeDef   			GPIO_InitStructure;
+	//EXTI_InitTypeDef   			EXTI_InitStructure;
+	//NVIC_InitTypeDef   			NVIC_InitStructure;
+	
+	//PA1 analog input
+	/* Enable GPIOA clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	
+  /* Configure PA.1 pin as analog input */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	
+	 /* DMA1 channel1 configuration ----------------------------------------------*/
+  DMA_DeInit(DMA1_Channel1);
+  DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)&ADCConvertedValue;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+  DMA_InitStructure.DMA_BufferSize = 1;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+  DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+  
+  /* Enable DMA1 channel1 */
+  DMA_Cmd(DMA1_Channel1, ENABLE);
+  
+  /* ADC1 configuration ------------------------------------------------------*/
+  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
+  ADC_InitStructure.ADC_ScanConvMode = ENABLE;
+  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
+  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
+  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+  ADC_InitStructure.ADC_NbrOfChannel = 1;
+  ADC_Init(ADC1, &ADC_InitStructure);
+
+  /* ADC1 regular channel1 configuration */ 
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 1, ADC_SampleTime_55Cycles5);
+
+  /* Enable ADC1 DMA */
+  ADC_DMACmd(ADC1, ENABLE);
+  
+  /* Enable ADC1 */
+  ADC_Cmd(ADC1, ENABLE);
+
+  /* Enable ADC1 reset calibration register */   
+  ADC_ResetCalibration(ADC1);
+  /* Check the end of ADC1 reset calibration register */
+  while(ADC_GetResetCalibrationStatus(ADC1));
+
+  /* Start ADC1 calibration */
+  ADC_StartCalibration(ADC1);
+  /* Check the end of ADC1 calibration */
+  while(ADC_GetCalibrationStatus(ADC1));
+     
+  /* Start ADC1 Software Conversion */ 
+  ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+	
+	
+}
+
+/**
+  * @brief  Convert ADC DATA to voltage mV
+  * @param  None
+  * @retval None
+  */
+void RC_BAT_DataHandle(void)
+{
+	uint32_t temp;
+	temp=3*(((ADCConvertedValue*3300)>>12)/2);
+	NRF24L01_ACK[0]=(uint8_t)(temp&0xFF);
+	NRF24L01_ACK[1]=(uint8_t)(temp>>8);
+}
+
+
+
+
+//
 

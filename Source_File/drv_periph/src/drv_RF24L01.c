@@ -15,13 +15,19 @@
   
   
   
-#include "drv_RF24L01.h"
-#include "drv_delay.h"
+#include "main.h"
 
+#ifndef DEBUG_MODE
+extern uint8_t NRF24L01_ACK[2];
+extern uint8_t NRF24L01_RX[4];
+#else
+extern uint8_t NRF24L01_ACK[8];
+extern uint8_t NRF24L01_RX[32];
+#endif
+extern uint8_t NRF24L01_ACK_NUM;
+extern uint8_t NRF24L01_RX_NUM;
 
 const char *g_ErrorString = "RF24L01 is not find !...";
-extern uint8_t NRF24L01_ACK[8];
-
 /**
   * @brief :NRF24L01读寄存器
   * @param :
@@ -600,35 +606,69 @@ uint8_t NRF24L01_RxPacket( uint8_t *rxbuf )
 }
 
  /**
-  * @brief :NRF24L01 中断处理
+  * @brief :接受到的数据发到串口并填充ACK
   * @param :无
   * @note  :无
   * @retval:无
   */
 void NRF24L01_SendToUart_RxPacket(void)
 {
-	
 	uint8_t irq_Status = 0, RxLength = 0, config;
-	uint8_t rxbuf[32];
 	irq_Status=NRF24L01_Read_Reg(STATUS);
 	if(irq_Status&RX_OK)			//0: DATA IN RX FIFO  1：RX FIFO EMPTY
 	{		
 			config=NRF24L01_Read_Reg(CONFIG);
-			NRF24L01_Write_Reg( CONFIG,config|(1<<MASK_RX_DR) );	//关接收中断
-			NRF24L01_Write_Reg( STATUS,irq_Status );				//清中断标志
-			RxLength = NRF24L01_Read_Reg( R_RX_PL_WID );		//读取接收到的数据个数
-			NRF24L01_Read_Buf( RD_RX_PLOAD,(uint8_t *)&rxbuf,RxLength );	//接收到数据 
-			NRF24L01_Write_Reg( FLUSH_RX,0xff );						//清除RX FIFO
-			NRF24L01_Write_Tx_Payload_InAck( (uint8_t *)NRF24L01_ACK, 8 );//写ACK PAYLOAD 到TX FIFO
-			drv_uart_tx_bytes( (uint8_t *)&rxbuf,RxLength);		//输出接收到的字节
+			NRF24L01_Write_Reg( CONFIG,config|(1<<MASK_RX_DR) );								//关接收中断
+			NRF24L01_Write_Reg( STATUS,irq_Status );														//清中断标志
+			RxLength = NRF24L01_Read_Reg( R_RX_PL_WID );												//读取接收到的数据个数
+			NRF24L01_Read_Buf( RD_RX_PLOAD,(uint8_t *)&NRF24L01_RX,RxLength );	//接收到数据 
+			NRF24L01_Write_Reg( FLUSH_RX,0xff );																//清除RX FIFO
+			NRF24L01_Write_Tx_Payload_InAck( (uint8_t *)NRF24L01_ACK, NRF24L01_ACK_NUM );				//写ACK PAYLOAD 到TX FIFO
+			drv_uart_tx_bytes( (uint8_t *)&NRF24L01_RX,RxLength);																//输出接收到的字节
+			
+			PWM_SetDutycycle(TIM4,CHANNEL1,NRF24L01_RX[0]);				//设置1通道占空比
+			PWM_SetDutycycle(TIM4,CHANNEL2,NRF24L01_RX[1]);				//设置2通道占空比
+			PWM_SetDutycycle(TIM4,CHANNEL3,NRF24L01_RX[2]);				//设置3通道占空比
+			PWM_SetDutycycle(TIM4,CHANNEL4,NRF24L01_RX[3]);				//设置4通道占空比
+			
+			NRF24L01_Write_Reg( CONFIG,config&(~(1<<MASK_RX_DR) ));															//开接收中断
+	}  
+}
+
+ /**
+  * @brief :接受到的数据设置PWM发到串口并填充ACK
+  * @param :无
+  * @note  :无
+  * @retval:无
+  */
+void NRF24L01_RcHandle(void)
+{
+	uint8_t irq_Status = 0, RxLength = 0, config;
+	//uint8_t rxbuf[32];
+	irq_Status=NRF24L01_Read_Reg(STATUS);
+	if(irq_Status&RX_OK)			//0: DATA IN RX FIFO  1：RX FIFO EMPTY
+	{		
+			config=NRF24L01_Read_Reg(CONFIG);
+			NRF24L01_Write_Reg( CONFIG,config|(1<<MASK_RX_DR) );								//关接收中断
+			NRF24L01_Write_Reg( STATUS,irq_Status );														//清中断标志
+			RxLength = NRF24L01_Read_Reg( R_RX_PL_WID );												//读取接收到的数据个数
+			NRF24L01_Read_Buf( RD_RX_PLOAD,(uint8_t *)&NRF24L01_RX,RxLength );	//接收到数据 
+			NRF24L01_Write_Reg( FLUSH_RX,0xff );																//清除RX FIFO
+			NRF24L01_Write_Tx_Payload_InAck( (uint8_t *)NRF24L01_ACK, NRF24L01_ACK_NUM );				//写ACK PAYLOAD 到TX FIFO
+
+			PWM_SetDutycycle(TIM4,CHANNEL1,NRF24L01_RX[0]);				//设置1通道占空比
+			PWM_SetDutycycle(TIM4,CHANNEL2,NRF24L01_RX[1]);				//设置2通道占空比
+			PWM_SetDutycycle(TIM4,CHANNEL3,NRF24L01_RX[2]);				//设置3通道占空比
+			PWM_SetDutycycle(TIM4,CHANNEL4,NRF24L01_RX[3]);				//设置4通道占空比
+		
 			NRF24L01_Write_Reg( CONFIG,config&(~(1<<MASK_RX_DR) ));//开接收中断
-	}
-  
+	}  
 }
 
 
+
  /**
-  * @brief :RF24L01引脚初始化
+  * @brief :RF24L01 CE引脚初始化
   * @param :无
   * @note  :无
   * @retval:无
@@ -637,30 +677,23 @@ void NRF24L01_Gpio_Init( void )
 {
 	GPIO_InitTypeDef	RF24L01_GpioInitStructer;
 	
-	RCC_APB2PeriphClockCmd( RF24L01_CE_GPIO_CLK | RF24L01_IRQ_GPIO_CLK, ENABLE );	//?? CE IRQ????  CS SCK MISO MOSI?SPI?????
+	RCC_APB2PeriphClockCmd( RF24L01_CE_GPIO_CLK , ENABLE );	
 	
-	//??CE?? ???? 
+	//CE ----PB11
 	RF24L01_GpioInitStructer.GPIO_Mode = GPIO_Mode_Out_PP;
 	RF24L01_GpioInitStructer.GPIO_Speed = GPIO_Speed_10MHz;
 	RF24L01_GpioInitStructer.GPIO_Pin = RF24L01_CE_GPIO_PIN;
 	GPIO_Init( RF24L01_CE_GPIO_PORT, &RF24L01_GpioInitStructer );
-	//??
-	GPIO_SetBits( RF24L01_CE_GPIO_PORT, RF24L01_CE_GPIO_PIN);
 	
-	/*
-	RF24L01_GpioInitStructer.GPIO_Mode = GPIO_Mode_IPU;
-	RF24L01_GpioInitStructer.GPIO_Speed = GPIO_Speed_50MHz;
-	RF24L01_GpioInitStructer.GPIO_Pin = RF24L01_IRQ_GPIO_PIN;
-	GPIO_Init( RF24L01_IRQ_GPIO_PORT, &RF24L01_GpioInitStructer );
-	GPIO_SetBits( RF24L01_IRQ_GPIO_PORT, RF24L01_IRQ_GPIO_PIN);
-	*/
-	RF24L01_SET_CE_LOW( );		//??24L01
-	RF24L01_SET_CS_HIGH( );		//??SPI??
+	GPIO_SetBits( RF24L01_CE_GPIO_PORT, RF24L01_CE_GPIO_PIN);
+		
+	RF24L01_SET_CE_LOW( );		
+	RF24L01_SET_CS_HIGH( );		
 }
 
 
  /**
-  * @brief :RF24L01模块初始化
+  * @brief :RF24L01参数模块初始化
   * @param :无
   * @note  :无
   * @retval:无
@@ -672,37 +705,35 @@ void RF24L01_Init( void )
 		
     RF24L01_SET_CE_HIGH( );
     NRF24L01_Clear_IRQ_Flag( IRQ_ALL );
+		
 #if DYNAMIC_PACKET == 1
-
-    NRF24L01_Write_Reg( DYNPD, ( 1 << 0 ) ); 	//使能通道0动态数据长度，自动ACK必须使能动态数据长度
-    NRF24L01_Write_Reg( FEATRUE, 0x06 );			//EN_DPL=1，EN_ACK_PAY=1, 失能NO_ACK命令
-    //NRF24L01_Read_Reg( DYNPD );					
-    //NRF24L01_Read_Reg( FEATRUE );
-	
+    NRF24L01_Write_Reg( DYNPD, ( 1 << 0 ) ); 										//使能通道0动态数据长度，自动ACK必须使能动态数据长度
+    NRF24L01_Write_Reg( FEATRUE, 0x06 );												//EN_DPL=1，EN_ACK_PAY=1, 失能NO_ACK命令
+    	
 #elif DYNAMIC_PACKET == 0
     
-    L01_WriteSingleReg( L01REG_RX_PW_P0, FIXED_PACKET_LEN );	//固定数据长度
+    L01_WriteSingleReg( L01REG_RX_PW_P0, FIXED_PACKET_LEN );		//固定数据长度
 	
 #endif	//DYNAMIC_PACKET
 
     NRF24L01_Write_Reg( CONFIG, /*( 1<<MASK_RX_DR ) |*/					//接收中断
-                                      ( 1 << EN_CRC ) |     //使能CRC 1个字节
-																			( 1 << PRIM_RX ) | 		//设置为PRX
-                                      ( 1 << PWR_UP ) );    //开启设备
+                                      ( 1 << EN_CRC ) |     		//使能CRC 1个字节
+																			( 1 << PRIM_RX ) | 				//设置为PRX
+                                      ( 1 << PWR_UP ) );    		//开启设备
 		
-    NRF24L01_Write_Reg( EN_AA, ( 1 << ENAA_P0 ) );   				//通道0自动应答
-    NRF24L01_Write_Reg( EN_RXADDR, ( 1 << ERX_P0 ) );				//通道0接收
-    NRF24L01_Write_Reg( SETUP_AW, AW_5BYTES );     					//地址宽度 5个字节
+    NRF24L01_Write_Reg( EN_AA, ( 1 << ENAA_P0 ) );   						//通道0自动应答
+    NRF24L01_Write_Reg( EN_RXADDR, ( 1 << ERX_P0 ) );						//通道0接收
+    NRF24L01_Write_Reg( SETUP_AW, AW_5BYTES );     							//地址宽度 5个字节
     NRF24L01_Write_Reg( SETUP_RETR, ARD_500US |
-                        ( REPEAT_CNT & 0x0F ) );         	//重复等待时间 500us, 重复传输15次
-    NRF24L01_Write_Reg( RF_CH, 60 );             					//初始化通道
-    NRF24L01_Write_Reg( RF_SETUP, 0x0E );									//250kbps 0dbm
+                        ( REPEAT_CNT & 0x0F ) );         				//重复等待时间 500us, 重复传输15次
+    NRF24L01_Write_Reg( RF_CH, 60 );             								//初始化通道
+    NRF24L01_Write_Reg( RF_SETUP, 0x0E );												//250kbps 0dbm
 
-    NRF24L01_Set_TxAddr( &addr[0], 5 );                      //设置TX地址
-    NRF24L01_Set_RxAddr( 0, &addr[0], 5 );                   //设置RX地址
+    NRF24L01_Set_TxAddr( &addr[0], 5 );                      		//设置TX地址
+    NRF24L01_Set_RxAddr( 0, &addr[0], 5 );                   		//设置RX地址
 		RF24L01_Set_Mode(MODE_RX);
 		
-		NRF24L01_Write_Tx_Payload_InAck( (uint8_t *)NRF24L01_ACK, 8 );	//
+		NRF24L01_Write_Tx_Payload_InAck( (uint8_t *)NRF24L01_ACK, NRF24L01_ACK_NUM );	
 		
 }
 

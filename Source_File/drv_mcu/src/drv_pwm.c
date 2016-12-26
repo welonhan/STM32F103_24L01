@@ -59,11 +59,11 @@ void PWM_Config(void)
   /* Compute CCR1 value to generate a duty cycle at 50% for channel 1 and 1N */
   Channel1Pulse = (uint16_t) (((uint32_t) 150* (TimerPeriod - 1)) / 2000);
   /* Compute CCR2 value to generate a duty cycle at 37.5%  for channel 2 and 2N */
-  Channel2Pulse = (uint16_t) (((uint32_t) 50 * (TimerPeriod - 1)) / 2000);
+  Channel2Pulse = (uint16_t) (((uint32_t) 150 * (TimerPeriod - 1)) / 2000);
   /* Compute CCR3 value to generate a duty cycle at 25%  for channel 3 and 3N */
-  Channel3Pulse = (uint16_t) (((uint32_t) 250 * (TimerPeriod - 1)) / 2000);
+  Channel3Pulse = (uint16_t) (((uint32_t) 150 * (TimerPeriod - 1)) / 2000);
   /* Compute CCR4 value to generate a duty cycle at 12.5%  for channel 4 */
-  Channel4Pulse = (uint16_t) (((uint32_t) 100* (TimerPeriod- 1)) / 2000);
+  Channel4Pulse = (uint16_t) (((uint32_t) 150* (TimerPeriod- 1)) / 2000);
 
   /* Time Base configuration */
   TIM_TimeBaseStructure.TIM_Prescaler = 72000000/(2001*50);
@@ -110,42 +110,39 @@ void PWM_Config(void)
   * @retval None
   */
 
-void PWM_Set(TIM_TypeDef* TIMx, uint8_t channel ,int8_t num )
+void PWM_SetDutycycle(TIM_TypeDef* TIMx, uint8_t channel ,uint8_t num )
 {
 	uint16_t pwm_num;
-	int8_t num1;
-	if(num>100)
-		num1=100;
-	else if (num<-100)
-		num1=-100;
+	uint16_t num1;
+	if(num>200)
+		num1=200;
 	else
-		num1=num;
+		num1=(uint16_t)num;
 	
-	pwm_num=(uint16_t)(150+num1);
+	pwm_num=50+num1;
 	
-	switch(channel)
-	{
-		case CHANNEL1:
+	
+		if(channel==CHANNEL1)
 		{
 			TIM_OCInitStructure.TIM_Pulse = pwm_num;
 			TIM_OC1Init(TIMx, &TIM_OCInitStructure);
 		}
-		case CHANNEL2:
+		if(channel==CHANNEL2)
 		{
 			TIM_OCInitStructure.TIM_Pulse = pwm_num;
 			TIM_OC2Init(TIMx, &TIM_OCInitStructure);
 		}
-		case CHANNEL3:
+		if(channel==CHANNEL3)
 		{
 			TIM_OCInitStructure.TIM_Pulse = pwm_num;
 			TIM_OC3Init(TIMx, &TIM_OCInitStructure);
 		}
-		case CHANNEL4:
+		if(channel==CHANNEL4)
 		{
 			TIM_OCInitStructure.TIM_Pulse = pwm_num;
 			TIM_OC4Init(TIMx, &TIM_OCInitStructure);
 		}
-	}
+	
 	 /* TIM4 counter enable */
   TIM_Cmd(TIMx, ENABLE);
 

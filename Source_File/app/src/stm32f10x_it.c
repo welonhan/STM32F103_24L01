@@ -180,7 +180,10 @@ void EXTI15_10_IRQHandler(void)
 		
 		/* Toggle LED2 */
     drv_led_flashing(LED_RED);
+		
 		NRF24L01_SendToUart_RxPacket();
+		
+//		NRF24L01_RcHandle();
   }
 
 }

@@ -42,43 +42,43 @@ void drv_spi_init( void )
 	SpiGpioInitStructer.GPIO_Mode = GPIO_Mode_AF_PP;
 	
 	SpiGpioInitStructer.GPIO_Pin = SPI_CLK_GPIO_PIN;
-	GPIO_Init( SPI_CLK_GPIO_PORT, &SpiGpioInitStructer );		//初始化SCK
+	GPIO_Init( SPI_CLK_GPIO_PORT, &SpiGpioInitStructer );				//初始化SCK
 	
 	SpiGpioInitStructer.GPIO_Pin = SPI_MOSI_GPIO_PIN;
-	GPIO_Init( SPI_MOSI_GPIO_PORT, &SpiGpioInitStructer );		//初始化MOSI
+	GPIO_Init( SPI_MOSI_GPIO_PORT, &SpiGpioInitStructer );			//初始化MOSI
 	
 	SpiGpioInitStructer.GPIO_Pin = SPI_MISO_GPIO_PIN;
-	GPIO_Init( SPI_MISO_GPIO_PORT, &SpiGpioInitStructer );		//初始化MISO
+	GPIO_Init( SPI_MISO_GPIO_PORT, &SpiGpioInitStructer );			//初始化MISO
 	
 	//NSS配置为推挽输出
 	SpiGpioInitStructer.GPIO_Mode = GPIO_Mode_Out_PP;
 	SpiGpioInitStructer.GPIO_Pin = SPI_NSS_GPIO_PIN;
-	GPIO_Init( SPI_NSS_GPIO_PORT, &SpiGpioInitStructer );		//初始化NSS
-	GPIO_SetBits( SPI_NSS_GPIO_PORT, SPI_NSS_GPIO_PIN );		//置高
+	GPIO_Init( SPI_NSS_GPIO_PORT, &SpiGpioInitStructer );				//初始化NSS
+	GPIO_SetBits( SPI_NSS_GPIO_PORT, SPI_NSS_GPIO_PIN );				//置高
 
 	/** SPI配置 */
 	SPI_I2S_DeInit( SPI_PORT );			//复位SPI
 	
 	if( SPI1 == SPI_PORT )				
 	{
-		RCC_APB2PeriphClockCmd( SPI_PORT_CLK, ENABLE );			//SPI1在APB2上，打开相应SPI时钟
+		RCC_APB2PeriphClockCmd( SPI_PORT_CLK, ENABLE );						//SPI1在APB2上，打开相应SPI时钟
 	}
 	else
 	{
-		RCC_APB1PeriphClockCmd( SPI_PORT_CLK, ENABLE );			//SPI2 3在APB1上
+		RCC_APB1PeriphClockCmd( SPI_PORT_CLK, ENABLE );						//SPI2 3在APB1上
 	}
 	
 	SPI_Cmd( SPI_PORT, DISABLE );		//关闭SPI外设，配置前关闭
 	
 	SpiInitStructer.SPI_Direction = SPI_Direction_2Lines_FullDuplex;	//双线全双工
-	SpiInitStructer.SPI_Mode = SPI_Mode_Master;							//主机模式
-	SpiInitStructer.SPI_CPOL = SPI_CPOL_Low;							//空闲状态为低电平 
-	SpiInitStructer.SPI_CPHA = SPI_CPHA_1Edge;							//第一个边沿采集数据
-	SpiInitStructer.SPI_DataSize = SPI_DataSize_8b;						//8位数据
-	SpiInitStructer.SPI_NSS = SPI_NSS_Soft;								//从机软件管理
+	SpiInitStructer.SPI_Mode = SPI_Mode_Master;												//主机模式
+	SpiInitStructer.SPI_CPOL = SPI_CPOL_Low;													//空闲状态为低电平 
+	SpiInitStructer.SPI_CPHA = SPI_CPHA_1Edge;												//第一个边沿采集数据
+	SpiInitStructer.SPI_DataSize = SPI_DataSize_8b;										//8位数据
+	SpiInitStructer.SPI_NSS = SPI_NSS_Soft;														//从机软件管理
 	SpiInitStructer.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_64;	//32分频
-	SpiInitStructer.SPI_FirstBit = SPI_FirstBit_MSB;					//最高位先发送
-	SpiInitStructer.SPI_CRCPolynomial = 7;								//CRC多项式,默认不使用SPI自带CRC	 
+	SpiInitStructer.SPI_FirstBit = SPI_FirstBit_MSB;									//最高位先发送
+	SpiInitStructer.SPI_CRCPolynomial = 7;														//CRC多项式,默认不使用SPI自带CRC	 
 	
 	SPI_Init( SPI_PORT, &SpiInitStructer );
 	SPI_Cmd( SPI_PORT, ENABLE );

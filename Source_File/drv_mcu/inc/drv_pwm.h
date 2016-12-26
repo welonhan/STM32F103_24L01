@@ -18,7 +18,7 @@ enum
 
 
 void PWM_Config(void);
-void PWM_Set(TIM_TypeDef* TIMx, uint8_t channel ,int8_t num );
+void PWM_SetDutycycle(TIM_TypeDef* TIMx, uint8_t channel ,uint8_t num );
 
 #endif
 
