@@ -256,7 +256,7 @@ void RC_ADC_Init(void)
 void RC_BAT_DataHandle(void)
 {
 	uint32_t temp;
-	temp=3*(((ADCConvertedValue*3300)>>12)/2);
+	temp=3*((ADCConvertedValue*3275)>>12);
 	NRF24L01_ACK[0]=(uint8_t)(temp&0xFF);
 	NRF24L01_ACK[1]=(uint8_t)(temp>>8);
 }
